@@ -3,6 +3,8 @@
 function sync_group_resources() {
     $groups = _grab_groups();
     error_log(var_export($groups, true));
+    $resources = _interrogate_regroup();
+    error_log(var_export($resources, true));
 }
 
 function _grab_groups() {
@@ -75,11 +77,11 @@ function _get_sig($uri, $c_key, $c_secret, $params) {
 
 function _interrogate_regroup() {
     $req = new WP_Http;
-    $username = 'wordpress';
-    $pasword = ' letterpull';
-    $headers = array('Authoriation' => 'Basic ' .  base64_encode("$username:$password"));
-    $api_uri = 'example.com/regroup';
-    $result = $req->request($api_uri, array('headers' => $headers));
+    $username = 'photo_hut';
+    $password = 'photo_hut';
+    $headers = array('Authorization' => 'Basic ' .  base64_encode("$username:$password"));
+    $api_uri = 'https://regroup.identitylabs.org/group/1000/resources';
+    $result = $req->request($api_uri, array('headers' => $headers, 'sslverify' => false));
     error_log('SWOOSH');
     error_log(var_export($result, true));
 }
