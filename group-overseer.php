@@ -1,10 +1,49 @@
 <?php
 
-function sync_group_resources() {
+
+/* Permission/role mapping */
+$role_map = array(
+    'admin' => 'administrator',
+    'manager' => 'editor',
+    'memeber' => 'contributor',
+);
+
+function sync_group_resources($login) {
+    $user = get_user_by('login', $login);
+    global $role_map;
     $groups = _grab_groups();
     error_log(var_export($groups, true));
-    $resources = _interrogate_regroup();
-    error_log(var_export($resources, true));
+    foreach ($groups as &$group) {
+        $group['resources'] = _interrogate_regroup($group['id']);
+    }
+    unset($group);
+
+
+    /* Massive hackage. No class, no elegance. Cheap code. */
+    error_log("Done inserting resources into description.");
+    error_log(var_export($groups, true));
+    foreach ($groups as $group) {
+        $team_role = $group['voot_membership_role']; 
+        
+        foreach ($group['resources'] as $res) {
+            $res = $res['resource'];
+            $domain = $res['local_name'] . '.wordpress.identitylabs.org';
+            /* Create new blog. */
+            error_log("Creating new blog: uri = {$domain}.");
+            $ret = create_empty_blog($domain, '/', $res['local_name']);
+            error_log("create_empty_blog retval = {$ret}");
+
+            /* Add current user to blog with right role */
+            $bid = get_blog_id_from_url($domain); 
+            $uid = $user->ID; 
+            error_log("blog id = " . $bid);
+            error_log("user id = " . $uid);
+            error_log("role will be = " . $role_map[$team_role]);
+
+            $ret = add_user_to_blog($bid, $uid, $role_map[$team_role]); 
+            error_log("retval: " . var_export($ret, true));
+        }
+    }
 }
 
 function _grab_groups() {
@@ -75,15 +114,16 @@ function _get_sig($uri, $c_key, $c_secret, $params) {
     return base64_encode(hash_hmac('sha1', $base_string, $key, true));
 }
 
-function _interrogate_regroup() {
+function _interrogate_regroup($gid) {
     $req = new WP_Http;
-    $username = 'photo_hut';
-    $password = 'photo_hut';
-    $headers = array('Authorization' => 'Basic ' .  base64_encode("$username:$password"));
-    $api_uri = 'https://regroup.identitylabs.org/group/1000/resources';
+    $username = 'wordpress';
+    $password = 'letterpull';
+    $headers = array('Authorization' => 'Basic ' . base64_encode("$username:$password"));
+    $api_uri = "https://regroup.identitylabs.org/group/{$gid}/resources";
     $result = $req->request($api_uri, array('headers' => $headers, 'sslverify' => false));
     error_log('SWOOSH');
-    error_log(var_export($result, true));
+    error_log(var_export($result['body'], true));
+    return json_decode($result['body'], true);
 }
 
-add_action('wp_login', 'sync_group_resources');
+add_action('wp_login', 'sync_group_resources', 1000);
