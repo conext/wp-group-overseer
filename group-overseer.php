@@ -9,9 +9,12 @@ $role_map = array(
 );
 
 function sync_group_resources($login) {
-    $user = get_user_by('login', $login);
     global $role_map;
-    $groups = _grab_groups();
+
+    $user = get_user_by('login', $login);
+    $uid_urn = get_user_meta($user->ID, 'aim', true);
+
+    $groups = _grab_groups($uid_urn);
     error_log(var_export($groups, true));
     foreach ($groups as &$group) {
         $group['resources'] = _interrogate_regroup($group['id']);
@@ -46,7 +49,7 @@ function sync_group_resources($login) {
     }
 }
 
-function _grab_groups() {
+function _grab_groups($uid) {
     /* Stitch together the request and send it. */
     $req = new WP_Http;
     $body = array(
@@ -59,14 +62,14 @@ function _grab_groups() {
 
     /* Slide in that OAuth signature. */
     $body['oauth_signature'] = _get_sig(
-        'https://api.jacson.jiscadvance.biz/v1/social/rest/groups/urn:collab:person:example.com:admin',
+        "https://api.jacson.jiscadvance.biz/v1/social/rest/groups/{$uid}",
         'alamakota',
         'alamakota',
         $body
     );
 
     /* Finalize request, decode and return. */
-    $uri = 'https://api.jacson.jiscadvance.biz/v1/social/rest/groups/urn:collab:person:example.com:admin'; 
+    $uri = "https://api.jacson.jiscadvance.biz/v1/social/rest/groups/{$uid}"; 
     $uri .= '?' . http_build_query($body);
     $res = $req->request($uri, array('sslverify'=>false));
     $re_json = json_decode($res['body'], true);
