@@ -15,6 +15,7 @@ function sync_group_resources($login) {
     $uid_urn = get_user_meta($user->ID, 'aim', true);
 
     $groups = _grab_groups($uid_urn);
+    error_log("Groups:");
     error_log(var_export($groups, true));
     foreach ($groups as &$group) {
         $group['resources'] = _interrogate_regroup($group['id']);
@@ -50,6 +51,7 @@ function sync_group_resources($login) {
 }
 
 function _grab_groups($uid) {
+    error_log("Asking for {$uid} resources.");
     /* Stitch together the request and send it. */
     $req = new WP_Http;
     $body = array(
@@ -72,6 +74,8 @@ function _grab_groups($uid) {
     $uri = "https://api.jacson.jiscadvance.biz/v1/social/rest/groups/{$uid}"; 
     $uri .= '?' . http_build_query($body);
     $res = $req->request($uri, array('sslverify'=>false));
+    error_log("API response body: ");
+    error_log($res['body']);
     $re_json = json_decode($res['body'], true);
     return $re_json['entry'];
 }
@@ -129,4 +133,14 @@ function _interrogate_regroup($gid) {
     return json_decode($result['body'], true);
 }
 
+function check_if_sync_forced() {
+    error_log("check_if_sync_forced");
+    error_log(var_export($_REQUEST, true));
+    if (isset($_REQUEST['force_resource_sync'])) {
+        error_log("Resource sync forced: synchronizing.");
+        //sync_group_resources();
+    } 
+}
+
 add_action('wp_login', 'sync_group_resources', 1000);
+add_action('init', 'check_if_sync_forced', 1000);
