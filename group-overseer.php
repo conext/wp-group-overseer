@@ -134,12 +134,40 @@ function _interrogate_regroup($gid) {
 }
 
 function check_if_sync_forced() {
+    /* Here be dragons and the occasional kung-fu savvy panda. */ 
+
+    /// Override the whole thing (move out later)
+    if (get_site_url() == 'https://wordpress.identitylabs.org') {
+        error_log("doing the check");    
+        if (is_user_logged_in()) {
+            if (isset($_COOKIE['conext_login_redirect'])) {
+                error_log("I though I saw a pussy-cat!");
+                error_log($_COOKIE['conext_login_redirect']);
+                wp_redirect($_COOKIE['conext_login_redirect']);
+                exit;
+            }
+        } else {
+            return;
+        }
+    } else {
+        if (isset($_COOKIE['conext_login_redirect'])) {
+            error_log("Clearing redirect cookie.");
+            setcookie('conext_login_redirect', 'the ghosts that haunt us..', 1, '', '.wordpress.identitylabs.org');
+        }
+    }
+
+    error_log("is_user_logged_in(): " . var_export(is_user_logged_in(), true));
     error_log("check_if_sync_forced");
-    error_log(var_export($_REQUEST, true));
-    if (isset($_REQUEST['force_resource_sync'])) {
+    if (isset($_REQUEST['force_resource_sync']) && is_user_logged_in()) {
         error_log("Resource sync forced: synchronizing.");
-        //sync_group_resources();
-    } 
+        sync_group_resources($GLOBALS['userdata']->user_login);
+    } else if (isset($_REQUEST['force_resource_sync']) && !is_user_logged_in()){
+        error_log("Convenient. Resource sync forced, but user is not logged in. Will log in.");
+        /* save URI */
+        setcookie('conext_login_redirect', get_site_url(), 0, '', '.wordpress.identitylabs.org');
+        wp_redirect('https://wordpress.identitylabs.org/wp-login.php');
+        exit; 
+    }  
 }
 
 add_action('wp_login', 'sync_group_resources', 1000);
