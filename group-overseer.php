@@ -170,5 +170,38 @@ function check_if_sync_forced() {
     }  
 }
 
+function after_provisioning_redirect() {
+    /* Only pertains to main site. */
+    // TODO: see if get_site_url is available when doing add_action instead
+    if (!get_site_url() == "https://wordpress.identitylabs.org") {
+        if (isset($_COOKIE['conext_redirect'])) {
+            setcookie('conext_redirect', '', 1, '', '.wordpress.identitylabs.org');
+        }
+        error_log("Not main site, skipping.");
+        return;
+    }
+
+    if (isset($_REQUEST['conext_redirect']) && is_user_logged_in()) {
+        error_log("new_site in request, user logged in.");
+        sync_group_resources($GLOBALS['userdata']->user_login); 
+        // TODO: unsafe?
+        wp_redirect('https://' . $_REQUEST['conext_redirect'] . '.wordpress.identitylabs.org');
+        exit;
+    } else if (isset($_REQUEST['conext_redirect']) && !is_user_logged_in()) {
+        error_log("new site in request, user not logged in - setting cookie");
+        setcookie('conext_redirect', $_REQUEST['conext_redirect'], 0, '', '.wordpress.identitylabs.org');
+        wp_redirect(get_site_url() . '/wp-login.php');
+        exit;
+    } else if (isset($_COOKIE['conext_redirect']) && ($_COOKIE['conext_redirect']) && is_user_logged_in()) {
+        error_log("cookie set, user logged in...");
+        // Assuming resources were synced & the user just logged in.
+        $target = $_COOKIE['conext_redirect'];
+        setcookie('conext_redirect', '', 1, '', 'wordpress.identitylabs.org');
+        wp_redirect('https://' . $target . '.wordpress.identitylabs.org');
+        exit;
+    }   
+}
+
 add_action('wp_login', 'sync_group_resources', 1000);
-add_action('init', 'check_if_sync_forced', 1000);
+//add_action('init', 'check_if_sync_forced', 1000);
+add_action('init', 'after_provisioning_redirect', 1000);
