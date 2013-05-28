@@ -46,6 +46,14 @@ function sync_group_resources($login) {
 
             $ret = add_user_to_blog($bid, $uid, $role_map[$team_role]); 
             error_log("retval: " . var_export($ret, true));
+
+            error_log("Setting blog title..");
+            if(!get_blog_option($bid, 'blogname')) {
+                switch_to_blog($bid);
+                $ret = update_option('blogname', "The {$res['local_name']} blog");
+                error_log("update_option ret: " . var_export($ret, true));
+                restore_current_blog();
+            }
         }
     }
 }
