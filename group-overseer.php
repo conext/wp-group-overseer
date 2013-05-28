@@ -8,6 +8,11 @@ $role_map = array(
     'memeber' => 'contributor',
 );
 
+/* Wrapper around var_export(..., true) */
+function _ve($x) {
+    return var_export($x, true);
+}
+
 function sync_group_resources($login) {
     global $role_map;
 
@@ -16,7 +21,7 @@ function sync_group_resources($login) {
 
     $groups = _grab_groups($uid_urn);
     error_log("Groups:");
-    error_log(var_export($groups, true));
+    error_log(_ve($groups));
     foreach ($groups as &$group) {
         $group['resources'] = _interrogate_regroup($group['id']);
     }
@@ -25,7 +30,7 @@ function sync_group_resources($login) {
 
     /* Massive hackage. No class, no elegance. Cheap code. */
     error_log("Done inserting resources into description.");
-    error_log(var_export($groups, true));
+    error_log(_ve($groups));
     foreach ($groups as $group) {
         $team_role = $group['voot_membership_role']; 
         
@@ -45,15 +50,15 @@ function sync_group_resources($login) {
             error_log("role will be = " . $role_map[$team_role]);
 
             $ret = add_user_to_blog($bid, $uid, $role_map[$team_role]); 
-            error_log("retval: " . var_export($ret, true));
+            error_log("retval: " . _ve($ret));
 
             error_log("Setting blog title..");
             if(!get_blog_option($bid, 'blogname')) {
                 switch_to_blog($bid);
                 $ret = update_option('blogname', "The {$res['local_name']} blog");
-                error_log("update_option ret: " . var_export($ret, true));
-                restore_current_blog();
+                error_log("update_option('blogname', ...) ret: " . _ve($ret));
             }
+            
         }
     }
 }
@@ -137,7 +142,7 @@ function _interrogate_regroup($gid) {
     $api_uri = "https://regroup.identitylabs.org/group/{$gid}/resources";
     $result = $req->request($api_uri, array('headers' => $headers, 'sslverify' => false));
     error_log('SWOOSH');
-    error_log(var_export($result['body'], true));
+    error_log(_ve($result['body']));
     return json_decode($result['body'], true);
 }
 
@@ -164,7 +169,7 @@ function check_if_sync_forced() {
         }
     }
 
-    error_log("is_user_logged_in(): " . var_export(is_user_logged_in(), true));
+    error_log("is_user_logged_in(): " . _ve(is_user_logged_in()));
     error_log("check_if_sync_forced");
     if (isset($_REQUEST['force_resource_sync']) && is_user_logged_in()) {
         error_log("Resource sync forced: synchronizing.");
