@@ -5,7 +5,7 @@
 $role_map = array(
     'admin' => 'administrator',
     'manager' => 'editor',
-    'memeber' => 'contributor',
+    'member' => 'contributor',
 );
 
 /* Wrapper around var_export(..., true) */
@@ -140,9 +140,11 @@ function _interrogate_regroup($gid) {
     $password = 'letterpull';
     $headers = array('Authorization' => 'Basic ' . base64_encode("$username:$password"));
     $api_uri = "https://regroup.identitylabs.org/group/{$gid}/resources";
+    error_log($api_uri);
     $result = $req->request($api_uri, array('headers' => $headers, 'sslverify' => false));
     error_log('SWOOSH');
     error_log(_ve($result['body']));
+    error_log(_ve($result));
     return json_decode($result['body'], true);
 }
 
