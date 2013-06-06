@@ -163,6 +163,8 @@ function log_in_unless_xhr() {
         setcookie('xx_redirect_to', '-', 1, '', '.wordpress.identitylabs.org');
         wp_redirect($target);
         exit;
+    } else if (is_user_logged_in() && isset($_COOKIE['xx_redirect_to']) && get_site_url() !== 'https:/wordpress.identitylabs.org') {
+        setcookie('xx_redirect_to', '-', 1, '', '.wordpress.identitylabs.org');
     }
 }
 
