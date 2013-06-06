@@ -185,6 +185,25 @@ function check_if_sync_forced() {
     }  
 }
 
+add_action('init', 'log_in_unless_xhr', 2000);
+function log_in_unless_xhr() {
+    /* Force login via wordpress.identitylabs.org (because SAML) UNLESS reqeust is XHR. */
+    if (!is_user_logged_in() && !isset($_SEERVER['HTTP_ORIGIN']) && get_site_url() !== 'https://wordpress.identitylabs.org') {
+        error_log("Not logged in and no Origin: header.");
+        /* why? because wp-login.php?redirect_to doesn't work with the SAML plugin. */
+        setcookie('xx_redirect_to', get_site_url(), 0, '', '.wordpress.identitylabs.org');
+        wp_redirect('https://wordpress.identitylabs.org/wp-login.php');
+        exit;
+    } else {
+        if (is_user_logged_in() && isset($_COOKIE['xx_redirect_to']) && get_site_url() == 'https://wordpress.identitylabs.org') {
+            $target = $_COOKIE['xx_redirect_to'];
+            setcookie('xx_redirect_to', '-', 1, '', '.wordpress.identitylabs.org');
+            wp_redirect($target);
+            exit;
+        }
+    }
+}
+
 function after_provisioning_redirect() {
     /* Only pertains to main site. */
     // TODO: see if get_site_url is available when doing add_action instead
