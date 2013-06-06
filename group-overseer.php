@@ -151,7 +151,7 @@ function _interrogate_regroup($gid) {
 
 add_action('init', 'log_in_unless_xhr', 2000);
 function log_in_unless_xhr() {
-    /* Force login via wordpress.identitylabs.org (because SAML) UNLESS reqeust is XHR. */
+    /* Force login via wordpress.identitylabs.org (because SAML) UNLESS request is XHR. */
     if (!is_user_logged_in() && !isset($_SERVER['HTTP_ORIGIN']) && get_site_url() !== 'https://wordpress.identitylabs.org') {
         error_log("Not logged in and no Origin: header.");
         /* why? because wp-login.php?redirect_to doesn't work with the SAML plugin. */
