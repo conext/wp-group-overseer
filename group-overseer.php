@@ -13,6 +13,7 @@ function _ve($x) {
     return var_export($x, true);
 }
 
+add_action('wp_login', 'sync_group_resources', 1000);
 function sync_group_resources($login) {
     global $role_map;
 
@@ -202,6 +203,7 @@ function log_in_unless_xhr() {
     }
 }
 
+add_action('init', 'after_provisioning_redirect', 1000);
 function after_provisioning_redirect() {
     /* Only pertains to main site. */
     // TODO: see if get_site_url is available when doing add_action instead
@@ -234,11 +236,7 @@ function after_provisioning_redirect() {
     }   
 }
 
+add_action('admin_menu', 'add_page_to_dashboard', 1000);
 function add_page_to_dashboard() {
     add_menu_page("Overseer", "Overseer", "manage_networks", "overseer_insight", "");
 }
-
-add_action('wp_login', 'sync_group_resources', 1000);
-//add_action('init', 'check_if_sync_forced', 1000);
-add_action('init', 'after_provisioning_redirect', 1000);
-add_action('admin_menu', 'add_page_to_dashboard', 1000);
