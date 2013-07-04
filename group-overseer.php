@@ -216,6 +216,8 @@ function logout_redirect() {
 
 add_action('clear_auth_cookie', 'clear_custom_cookies', 1);
 function clear_custom_cookies() {
+    setcookie('PHPSESSID', ' ', time() - 31536000, '', '.wordpress.identitylabs.org');
+    setcookie('SimpleSAMLAuthToken', ' ', time() - 31536000, '', '.wordpress.identitylabs.org');
     setcookie('xx_redirect_to', ' ', time() - 31536000, '', '.wordpress.identitylabs.org');
     setcookie('conext_redirect', ' ', time() - 31536000, '', '.wordpress.identitylabs.org');
 }
