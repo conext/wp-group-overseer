@@ -78,14 +78,14 @@ function _grab_groups($uid) {
 
     /* Slide in that OAuth signature. */
     $body['oauth_signature'] = _get_sig(
-        "https://api.jacson.jiscadvance.biz/v1/social/rest/groups/{$uid}",
+        "https://api.collaborate.jiscadvance.biz/v1/social/rest/groups/{$uid}",
         'alamakota',
         'alamakota',
         $body
     );
 
     /* Finalize request, decode and return. */
-    $uri = "https://api.jacson.jiscadvance.biz/v1/social/rest/groups/{$uid}"; 
+    $uri = "https://api.collaborate.jiscadvance.biz/v1/social/rest/groups/{$uid}"; 
     $uri .= '?' . http_build_query($body);
     $res = $req->request($uri, array('sslverify'=>false));
     error_log("API response body: ");
@@ -204,4 +204,12 @@ function after_provisioning_redirect() {
 add_action('admin_menu', 'add_page_to_dashboard', 1000);
 function add_page_to_dashboard() {
     add_menu_page("Overseer", "Overseer", "manage_networks", "overseer_insight", "");
+}
+
+add_action('wp_logout', 'logout_redirect', 1);
+function logout_redirect() {
+    error_log('wp_logout');
+    wp_clear_auth_cookie();
+    wp_redirect('http://portaldev.cloud.jiscadvance.biz'); 
+    exit;
 }
