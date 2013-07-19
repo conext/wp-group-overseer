@@ -1,5 +1,7 @@
 <?php
 
+/* Include scheme, don't include trailing slash. */
+$REGROUP_URL = "https://regroup.identitylabs.org"
 
 /* Permission/role mapping */
 $role_map = array(
@@ -136,11 +138,12 @@ function _get_sig($uri, $c_key, $c_secret, $params) {
 }
 
 function _interrogate_regroup($gid) {
+    global $REGROUP_URL;
     $req = new WP_Http;
     $username = 'wordpress';
     $password = 'letterpull';
     $headers = array('Authorization' => 'Basic ' . base64_encode("$username:$password"));
-    $api_uri = "https://regroup.identitylabs.org/group/{$gid}/resources";
+    $api_uri = "{$REGROUP_URL}/group/{$gid}/resources";
     error_log($api_uri);
     $result = $req->request($api_uri, array('headers' => $headers, 'sslverify' => false));
     error_log('SWOOSH');
