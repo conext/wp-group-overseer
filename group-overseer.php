@@ -1,7 +1,7 @@
 <?php
 
 /* Include scheme, don't include trailing slash. */
-$REGROUP_URL = "https://regroup.identitylabs.org"
+$REGROUP_URL = "https://regroup.identitylabs.org";
 
 /* Permission/role mapping */
 $role_map = array(
