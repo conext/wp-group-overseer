@@ -1,7 +1,12 @@
 <?php
 
 /* Include scheme, don't include trailing slash. */
-$REGROUP_URL = "https://regroup.identitylabs.org";
+/* MUST be HTTPS! */
+define('REGROUP_URL', 'https://regroup.identitylabs.org');;
+define('TEAMS_API', 'https://api.collaborate.jiscadvance.biz');
+define('MAIN_SITE_URL', 'https://wordpress.identitylabs.org');
+/* Include leading dot: .blog.example.com */
+define('WORDPRESS_DOMAIN', '.wordpress.identitylabs.org');
 
 /* Permission/role mapping */
 $role_map = array(
@@ -39,7 +44,7 @@ function sync_group_resources($login) {
         
         foreach ($group['resources'] as $res) {
             $res = $res['resource'];
-            $domain = $res['local_name'] . '.wordpress.identitylabs.org';
+            $domain = $res['local_name'] . WORDPRESS_DOMAIN;
             /* Create new blog. */
             error_log("Creating new blog: uri = {$domain}.");
             $ret = create_empty_blog($domain, '/', $res['local_name']);
@@ -80,14 +85,14 @@ function _grab_groups($uid) {
 
     /* Slide in that OAuth signature. */
     $body['oauth_signature'] = _get_sig(
-        "https://api.collaborate.jiscadvance.biz/v1/social/rest/groups/{$uid}",
+        TEAMS_API . "/v1/social/rest/groups/{$uid}",
         'alamakota',
         'alamakota',
         $body
     );
 
     /* Finalize request, decode and return. */
-    $uri = "https://api.collaborate.jiscadvance.biz/v1/social/rest/groups/{$uid}"; 
+    $uri = TEAMS_API . "/v1/social/rest/groups/{$uid}"; 
     $uri .= '?' . http_build_query($body);
     $res = $req->request($uri, array('sslverify'=>false));
     error_log("API response body: ");
@@ -138,12 +143,11 @@ function _get_sig($uri, $c_key, $c_secret, $params) {
 }
 
 function _interrogate_regroup($gid) {
-    global $REGROUP_URL;
     $req = new WP_Http;
     $username = 'wordpress';
     $password = 'letterpull';
     $headers = array('Authorization' => 'Basic ' . base64_encode("$username:$password"));
-    $api_uri = "{$REGROUP_URL}/group/{$gid}/resources";
+    $api_uri = REGROUP_URL . "/group/{$gid}/resources";
     error_log($api_uri);
     $result = $req->request($api_uri, array('headers' => $headers, 'sslverify' => false));
     error_log('SWOOSH');
@@ -155,19 +159,19 @@ function _interrogate_regroup($gid) {
 add_action('init', 'log_in_unless_xhr', 2000);
 function log_in_unless_xhr() {
     /* Force login via wordpress.identitylabs.org (because SAML) UNLESS request is XHR. */
-    if (!is_user_logged_in() && !isset($_SERVER['HTTP_ORIGIN']) && get_site_url() !== 'https://wordpress.identitylabs.org') {
+    if (!is_user_logged_in() && !isset($_SERVER['HTTP_ORIGIN']) && get_site_url() !== MAIN_SITE_URL) {
         error_log("Not logged in and no Origin: header.");
         /* why? because wp-login.php?redirect_to doesn't work with the SAML plugin. */
-        setcookie('xx_redirect_to', get_site_url(), 0, '', '.wordpress.identitylabs.org');
-        wp_redirect('https://wordpress.identitylabs.org/wp-login.php');
+        setcookie('xx_redirect_to', get_site_url(), 0, '', WORDPRESS_DOMAIN);
+        wp_redirect(MAIN_SITE_URL . '/wp-login.php');
         exit;
-    } else if (is_user_logged_in() && isset($_COOKIE['xx_redirect_to']) && get_site_url() == 'https://wordpress.identitylabs.org') {
+    } else if (is_user_logged_in() && isset($_COOKIE['xx_redirect_to']) && get_site_url() == MAIN_SITE_URL) {
         $target = $_COOKIE['xx_redirect_to'];
-        setcookie('xx_redirect_to', '-', 1, '', '.wordpress.identitylabs.org');
+        setcookie('xx_redirect_to', '-', 1, '', WORDPRESS_DOMAIN);
         wp_redirect($target);
         exit;
-    } else if (is_user_logged_in() && isset($_COOKIE['xx_redirect_to']) && get_site_url() !== 'https:/wordpress.identitylabs.org') {
-        setcookie('xx_redirect_to', '-', 1, '', '.wordpress.identitylabs.org');
+    } else if (is_user_logged_in() && isset($_COOKIE['xx_redirect_to']) && get_site_url() !== MAIN_SITE_URL) {
+        setcookie('xx_redirect_to', '-', 1, '', WORDPRESS_DOMAIN);
     }
 }
 
@@ -175,9 +179,9 @@ add_action('init', 'after_provisioning_redirect', 1000);
 function after_provisioning_redirect() {
     /* Only pertains to main site. */
     // TODO: see if get_site_url is available when doing add_action instead
-    if (!get_site_url() == "https://wordpress.identitylabs.org") {
+    if (!get_site_url() == MAIN_SITE_URL) {
         if (isset($_COOKIE['conext_redirect'])) {
-            setcookie('conext_redirect', '', 1, '', '.wordpress.identitylabs.org');
+            setcookie('conext_redirect', '', 1, '', WORDPRESS_DOMAIN);
         }
         error_log("Not main site, skipping.");
         return;
@@ -187,19 +191,19 @@ function after_provisioning_redirect() {
         error_log("new_site in request, user logged in.");
         sync_group_resources($GLOBALS['userdata']->user_login); 
         // TODO: unsafe?
-        wp_redirect('https://' . $_REQUEST['conext_redirect'] . '.wordpress.identitylabs.org');
+        wp_redirect('https://' . $_REQUEST['conext_redirect'] . WORDPRESS_DOMAIN);
         exit;
     } else if (isset($_REQUEST['conext_redirect']) && !is_user_logged_in()) {
         error_log("new site in request, user not logged in - setting cookie");
-        setcookie('conext_redirect', $_REQUEST['conext_redirect'], 0, '', '.wordpress.identitylabs.org');
+        setcookie('conext_redirect', $_REQUEST['conext_redirect'], 0, '', WORDPRESS_DOMAIN);
         wp_redirect(get_site_url() . '/wp-login.php');
         exit;
     } else if (isset($_COOKIE['conext_redirect']) && ($_COOKIE['conext_redirect']) && is_user_logged_in()) {
         error_log("cookie set, user logged in...");
         // Assuming resources were synced & the user just logged in.
         $target = $_COOKIE['conext_redirect'];
-        setcookie('conext_redirect', '', 1, '', 'wordpress.identitylabs.org');
-        wp_redirect('https://' . $target . '.wordpress.identitylabs.org');
+        setcookie('conext_redirect', '', 1, '', WORDPRESS_DOMAIN);
+        wp_redirect('https://' . $target . WORDPRESS_DOMAIN);
         exit;
     }   
 }
@@ -219,8 +223,8 @@ function logout_redirect() {
 
 add_action('clear_auth_cookie', 'clear_custom_cookies', 1);
 function clear_custom_cookies() {
-    setcookie('PHPSESSID', ' ', time() - 31536000, '', '.wordpress.identitylabs.org');
-    setcookie('SimpleSAMLAuthToken', ' ', time() - 31536000, '', '.wordpress.identitylabs.org');
-    setcookie('xx_redirect_to', ' ', time() - 31536000, '', '.wordpress.identitylabs.org');
-    setcookie('conext_redirect', ' ', time() - 31536000, '', '.wordpress.identitylabs.org');
+    setcookie('PHPSESSID', ' ', time() - 31536000, '', WORDPRESS_DOMAIN);
+    setcookie('SimpleSAMLAuthToken', ' ', time() - 31536000, '', WORDPRESS_DOMAIN);
+    setcookie('xx_redirect_to', ' ', time() - 31536000, '', WORDPRESS_DOMAIN);
+    setcookie('conext_redirect', ' ', time() - 31536000, '', WORDPRESS_DOMAIN);
 }
