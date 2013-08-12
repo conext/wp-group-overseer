@@ -2,11 +2,15 @@
 
 /* Include scheme, don't include trailing slash. */
 /* MUST be HTTPS! */
-define('REGROUP_URL', 'https://regroup.identitylabs.org');;
+define('REGROUP_URL', 'https://regroup.collaborate.jiscadvance.biz');;
 define('TEAMS_API', 'https://api.collaborate.jiscadvance.biz');
-define('MAIN_SITE_URL', 'https://wordpress.identitylabs.org');
+define('MAIN_SITE_URL', 'https://wordpress.apps.jiscconext.org.uk');
 /* Include leading dot: .blog.example.com */
-define('WORDPRESS_DOMAIN', '.wordpress.identitylabs.org');
+define('WORDPRESS_DOMAIN', '.wordpress.apps.jiscconext.org.uk');
+
+/* Regroup related configuration. */
+define('REGROUP_USERNAME', 'wordpress');
+define('REGROUP_PASSWORD', 'letterpull');
 
 /* Permission/role mapping */
 $role_map = array(
@@ -25,7 +29,8 @@ function sync_group_resources($login) {
     global $role_map;
 
     $user = get_user_by('login', $login);
-    $uid_urn = get_user_meta($user->ID, 'aim', true);
+    $uid_urn = get_user_meta($user->ID, 'conext_uid', true);
+    error_log("Full UID pulled from meta: " . $uid_urn);    
 
     $groups = _grab_groups($uid_urn);
     error_log("Groups:");
@@ -58,6 +63,11 @@ function sync_group_resources($login) {
             error_log("role will be = " . $role_map[$team_role]);
 
             $ret = add_user_to_blog($bid, $uid, $role_map[$team_role]); 
+            error_log("retval: " . _ve($ret));
+
+            /* Add user to main site blog with lowest privilege. */
+            error_log("Adding user to main site as a subscriber..");
+            $ret = add_user_to_blog(1, $uid, 'subscriber');
             error_log("retval: " . _ve($ret));
 
             error_log("Setting blog title..");
@@ -93,6 +103,7 @@ function _grab_groups($uid) {
 
     /* Finalize request, decode and return. */
     $uri = TEAMS_API . "/v1/social/rest/groups/{$uid}"; 
+	error_log("request dest: " . $uri);
     $uri .= '?' . http_build_query($body);
     $res = $req->request($uri, array('sslverify'=>false));
     error_log("API response body: ");
@@ -144,8 +155,8 @@ function _get_sig($uri, $c_key, $c_secret, $params) {
 
 function _interrogate_regroup($gid) {
     $req = new WP_Http;
-    $username = 'wordpress';
-    $password = 'letterpull';
+    $username = REGROUP_USERNAME;
+    $password = REGROUP_PASSWORD;
     $headers = array('Authorization' => 'Basic ' . base64_encode("$username:$password"));
     $api_uri = REGROUP_URL . "/group/{$gid}/resources";
     error_log($api_uri);
@@ -158,19 +169,35 @@ function _interrogate_regroup($gid) {
 
 add_action('init', 'log_in_unless_xhr', 2000);
 function log_in_unless_xhr() {
-    /* Force login via wordpress.identitylabs.org (because SAML) UNLESS request is XHR. */
+    /* Force login via MAIN_SITE_URL (because SAML) UNLESS request is XHR. */
     if (!is_user_logged_in() && !isset($_SERVER['HTTP_ORIGIN']) && get_site_url() !== MAIN_SITE_URL) {
+	/* 
+         * The user is NOT logged in, didn't request the main site, and it's not an XHR request.
+         * Action: we force the user to log in by redirecting to /wp-login.php, which initiates the
+         * SAML login flow (this is because of the simplesamlphp-authentication plugin
+         * which basically hijacks that page.
+         */ 
         error_log("Not logged in and no Origin: header.");
         /* why? because wp-login.php?redirect_to doesn't work with the SAML plugin. */
         setcookie('xx_redirect_to', get_site_url(), 0, '', WORDPRESS_DOMAIN);
         wp_redirect(MAIN_SITE_URL . '/wp-login.php');
         exit;
     } else if (is_user_logged_in() && isset($_COOKIE['xx_redirect_to']) && get_site_url() == MAIN_SITE_URL) {
+	/* 
+	 * User is logged in, hit the main site (possibly after just logging in)
+    	 * and has an xx_redirect_t cookie set. We interrupt the normal course of events
+	 * and redirect him to wherever the cookie is pointing to.
+         */
         $target = $_COOKIE['xx_redirect_to'];
         setcookie('xx_redirect_to', '-', 1, '', WORDPRESS_DOMAIN);
         wp_redirect($target);
         exit;
     } else if (is_user_logged_in() && isset($_COOKIE['xx_redirect_to']) && get_site_url() !== MAIN_SITE_URL) {
+	/*
+	 * The user is logged in, a redirect cookie is set, but the site requested is not the main site.
+         * What does this mean? That the user got here by hitting the if(){} above.
+	 * All's good, we clear the cookie to have a clean slate.
+         */
         setcookie('xx_redirect_to', '-', 1, '', WORDPRESS_DOMAIN);
     }
 }
@@ -208,16 +235,11 @@ function after_provisioning_redirect() {
     }   
 }
 
-add_action('admin_menu', 'add_page_to_dashboard', 1000);
-function add_page_to_dashboard() {
-    add_menu_page("Overseer", "Overseer", "manage_networks", "overseer_insight", "");
-}
-
 add_action('wp_logout', 'logout_redirect', 1);
 function logout_redirect() {
     error_log('wp_logout');
     wp_clear_auth_cookie();
-    wp_redirect('http://portaldev.cloud.jiscadvance.biz'); 
+    wp_redirect(MAIN_SITE_URL); 
     exit;
 }
 
